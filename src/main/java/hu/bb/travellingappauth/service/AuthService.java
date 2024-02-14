@@ -1,6 +1,7 @@
 package hu.bb.travellingappauth.service;
 
 import hu.bb.travellingappauth.helper.JwtUtil;
+import hu.bb.travellingappauth.model.ResetPasswordRequest;
 import hu.bb.travellingappauth.model.User;
 import hu.bb.travellingappauth.model.UserLoginRequest;
 import hu.bb.travellingappauth.model.UserRegisterRequest;
@@ -10,6 +11,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class AuthService {
@@ -49,7 +53,11 @@ public class AuthService {
                 return new ResponseEntity<>(this.WRONG_PASSWORD, HttpStatus.UNAUTHORIZED);
 
             //JWT token generálása
-            return new ResponseEntity<>(jwtUtil.generateToken(userLoginRequest.getEmail()), HttpStatus.OK);
+            Map<String,Object> claims = new HashMap<>();
+            claims.put("id",user.getId());
+            claims.put("email",user.getEmail());
+            claims.put("twoFactor",user.getTwoFactor());
+            return new ResponseEntity<>(jwtUtil.generateToken(user.getEmail(),claims), HttpStatus.OK);
 
         }catch (Exception e){
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
@@ -91,4 +99,23 @@ public class AuthService {
     private Boolean checkPasswordIsMatch(String passwordFromDb, String passwordFromInput){
         return passwordEncoder.matches(passwordFromInput,passwordFromDb);
     }
+
+    /**
+     * Reset password process workflow
+     * */
+    public ResponseEntity<String> resetPw(ResetPasswordRequest resetPasswordRequest){
+        try {
+            //Request body null validation
+            if(resetPasswordRequest.getPassword()==null || resetPasswordRequest.getPasswordAgain() == null)
+                return new ResponseEntity<>(this.EMPTY_DATA_ERROR, HttpStatus.BAD_REQUEST);
+
+
+
+            return new ResponseEntity<>("",HttpStatus.CREATED);
+
+        }catch (Exception e){
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 }

@@ -1,5 +1,6 @@
 package hu.bb.travellingappauth.controller;
 
+import hu.bb.travellingappauth.model.ResetPasswordRequest;
 import hu.bb.travellingappauth.model.User;
 import hu.bb.travellingappauth.model.UserLoginRequest;
 import hu.bb.travellingappauth.model.UserRegisterRequest;
@@ -47,7 +48,15 @@ public class AuthController {
     }
 
     //TODO: password reset endpoint
+    @PostMapping("/resetPw")
+    public  ResponseEntity<String> register(@RequestBody ResetPasswordRequest resetPasswordRequest){
+        return authService.resetPw(resetPasswordRequest);
+    }
 
     //TODO: password forgot endpoint
+
+    //TODO: 2FA setting endpoint
+
+    //TODO: 2FA check endpoint
 
 }

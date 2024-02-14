@@ -28,4 +28,7 @@ public class User extends BaseEntity{
 
     @Column(nullable = false, name = "u_password")
     private String password;
+
+    @Column(name = "u_two_factor",columnDefinition = "boolean default false")
+    private Boolean twoFactor;
 }
