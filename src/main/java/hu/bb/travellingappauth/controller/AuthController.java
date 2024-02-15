@@ -9,12 +9,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
@@ -47,15 +45,28 @@ public class AuthController {
         return authService.register(userRegisterRequest);
     }
 
-    //TODO: password reset endpoint
+    @ApiResponses(value = {
+            @ApiResponse(description = "Password reset successfully!",responseCode = "200",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))}),
+            @ApiResponse(description = "Bad Request during reset password.",responseCode = "400",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))}),
+            @ApiResponse(description = "Unauthorized request.",responseCode = "401",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))}),
+            @ApiResponse(description = "Email Not Found.",responseCode = "404",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))}),
+            @ApiResponse(description = "Internal server error.",responseCode = "500",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))})
+        }
+    )
     @PostMapping("/resetPw")
-    public  ResponseEntity<String> register(@RequestBody ResetPasswordRequest resetPasswordRequest){
-        return authService.resetPw(resetPasswordRequest);
+    public  ResponseEntity<String> register(@RequestBody ResetPasswordRequest resetPasswordRequest, HttpServletRequest request){
+        return authService.resetPw(request, resetPasswordRequest);
     }
 
     //TODO: password forgot endpoint
 
     //TODO: 2FA setting endpoint
+
+    //TODO: 2FA get Qr Code
+    @GetMapping("/2fa/qr")
+    public ResponseEntity<Object> getTwoFactorQr(@RequestParam("email") String email){
+        return this.authService.getTwoFactorQrCode(email);
+    }
 
     //TODO: 2FA check endpoint
 
