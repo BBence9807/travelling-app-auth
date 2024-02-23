@@ -31,4 +31,7 @@ public class User extends BaseEntity{
 
     @Column(name = "u_two_factor",columnDefinition = "boolean default false")
     private Boolean twoFactor;
+
+    @Column(name = "u_two_factor_recovery")
+    private String twoFactorRecovery;
 }

@@ -1,27 +1,20 @@
 package hu.bb.travellingappauth.service;
 
-import dev.samstevens.totp.code.HashingAlgorithm;
-import dev.samstevens.totp.qr.QrData;
-import dev.samstevens.totp.qr.QrDataFactory;
-import dev.samstevens.totp.qr.QrGenerator;
-import dev.samstevens.totp.qr.ZxingPngQrGenerator;
-import dev.samstevens.totp.secret.DefaultSecretGenerator;
-import dev.samstevens.totp.secret.SecretGenerator;
 import hu.bb.travellingappauth.helper.JwtUtil;
-import hu.bb.travellingappauth.model.ResetPasswordRequest;
-import hu.bb.travellingappauth.model.User;
-import hu.bb.travellingappauth.model.UserLoginRequest;
-import hu.bb.travellingappauth.model.UserRegisterRequest;
+import hu.bb.travellingappauth.model.*;
 import hu.bb.travellingappauth.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 @Service
 public class AuthService {
@@ -38,13 +31,21 @@ public class AuthService {
     @Autowired
     private TokenValidation tokenValidation;
 
+    @Autowired
+    private TwoFactorService twoFactorService;
+
+    @Value( "${forgot.password.url}" )
+    private String forgotPwUrl;
+
 
     private final String EMPTY_DATA_ERROR = "Please provide all needed data! There are required!";
     private final String NOT_EXIST_EMAIL = "Email does not exist! Please provide valid email address!";
     private final String EXIST_EMAIL = "Email does already exist! Please provide valid email address!";
     private final String WRONG_PASSWORD = "Wrong password! Please provide valid password!";
     private final String SUCCESS_PASSWORD_RESET = "Password reset successfully!";
+    private final String SUCCESS_TWO_FACTOR_CHANGED = "Two Factor Authorization changed successfully!";
     private final String UNAUTHORIZED = "Permission denied! Invalid token!";
+    private final String EMAIL_SEND = "Email was send to given address!";
 
     private final String ISSUER = "TravellingApp";
 
@@ -148,28 +149,183 @@ public class AuthService {
         }
     }
 
-    public ResponseEntity<Object> getTwoFactorQrCode(String email){
-
+    /**
+     * Forgot password process workflow
+     * */
+    public ResponseEntity<String> forgotPw(String email){
         try {
-            SecretGenerator secretGenerator = new DefaultSecretGenerator();
-            String secret = secretGenerator.generate();
 
-            QrData data = new QrData.Builder()
-                    .label(email)
-                    .secret(secret)
-                    .issuer(this.ISSUER)
-                    .algorithm(HashingAlgorithm.SHA256) // More on this below
-                    .digits(6)
-                    .period(30)
-                    .build();
+            //Request null validation
+            if(email == null)
+                return new ResponseEntity<>(this.EMPTY_DATA_ERROR, HttpStatus.BAD_REQUEST);
 
-            QrGenerator generator = new ZxingPngQrGenerator();
-            return new ResponseEntity<>(generator.generate(data),HttpStatus.OK);
+            if(userRepository.existsByEmail(email))
+                return new ResponseEntity<>(this.NOT_EXIST_EMAIL, HttpStatus.NOT_FOUND);
+
+
+            //jwt token összeállítása és url cím összeállítása
+            Map<String,Object> claims = new HashMap<>();
+            String token = jwtUtil.generateToken(email,claims);
+
+            String url = forgotPwUrl+token;
+
+            //Email kiküldése
+
+
+            return new ResponseEntity<>(this.EMAIL_SEND,HttpStatus.OK);
+
+        }catch (Exception e){
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Set User Two Factor State
+     * */
+    public ResponseEntity<String> setTwoFactorAuth(HttpServletRequest request, TwoFactorSetRequest twoFactorSetRequest){
+        try {
+            //Token validation
+            if(!tokenValidation.validate(request))
+                return new ResponseEntity<>(this.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+
+            //Request validation
+            if(twoFactorSetRequest.getEmail()==null || twoFactorSetRequest.getValue()==null)
+                return new ResponseEntity<>(this.EMPTY_DATA_ERROR, HttpStatus.BAD_REQUEST);
+
+            if(userRepository.existsByEmail(twoFactorSetRequest.getEmail()))
+                return new ResponseEntity<>(this.NOT_EXIST_EMAIL, HttpStatus.NOT_FOUND);
+
+            //Mod twoFactor in User
+            User user = userRepository.getUserByEmail(twoFactorSetRequest.getEmail());
+            user.setTwoFactor(twoFactorSetRequest.getValue());
+
+            userRepository.save(user);
+
+            return new ResponseEntity<>(SUCCESS_TWO_FACTOR_CHANGED,HttpStatus.OK);
 
         }catch (Exception e){
             return new ResponseEntity<>(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
 
+    /**
+     * Get QR code to set Two Factor
+     * */
+    public ResponseEntity<Object> getTwoFactorQrCode(HttpServletRequest request, String email){
+        try {
+            //Token validation
+            if(!tokenValidation.validate(request))
+                return new ResponseEntity<>(this.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+
+            //Request validation
+            if(email==null)
+                return new ResponseEntity<>(this.EMPTY_DATA_ERROR, HttpStatus.BAD_REQUEST);
+
+            if(userRepository.existsByEmail(email))
+                return new ResponseEntity<>(this.NOT_EXIST_EMAIL, HttpStatus.NOT_FOUND);
+
+            //Generate Qr Code
+            return new ResponseEntity<>(twoFactorService.generateQrCode(email,ISSUER),HttpStatus.OK);
+
+        }catch (Exception e){
+            return new ResponseEntity<>(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+    /**
+     * Validate Two Factor Code
+     * */
+    public ResponseEntity<Object> checkTwoFactorCode(HttpServletRequest request, String code){
+        try {
+            //Token validation
+            if(!tokenValidation.validate(request))
+                return new ResponseEntity<>(this.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+
+            //Request validation
+            if(code==null)
+                return new ResponseEntity<>(this.EMPTY_DATA_ERROR, HttpStatus.BAD_REQUEST);
+
+            //Check Two Factor Code
+            return new ResponseEntity<>(twoFactorService.checkCode(code),HttpStatus.OK);
+
+        }catch (Exception e){
+            return new ResponseEntity<>(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+    /**
+     * Get and Set Two Factor Recovery Code
+     * */
+    public ResponseEntity<String> getTwoFactoryRecovery(HttpServletRequest request, String email){
+        try {
+            //Token validation
+            if(!tokenValidation.validate(request))
+                return new ResponseEntity<>(this.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+
+            //Request validation
+            if(email==null)
+                return new ResponseEntity<>(this.EMPTY_DATA_ERROR, HttpStatus.BAD_REQUEST);
+
+            if(userRepository.existsByEmail(email))
+                return new ResponseEntity<>(this.NOT_EXIST_EMAIL, HttpStatus.NOT_FOUND);
+
+
+            //Generate recovery code
+            String code = twoFactorService.generateRecovery()[this.getRandomNumberUsingInts(0,twoFactorService.generateRecovery().length-1)];
+
+            //Set recovery code to user
+            User user = userRepository.getUserByEmail(email);
+            user.setTwoFactorRecovery(code);
+
+            userRepository.save(user);
+
+            //Check Two Factor Code
+            return new ResponseEntity<>(code,HttpStatus.OK);
+
+        }catch (Exception e){
+            return new ResponseEntity<>(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Generate random int number
+     * */
+    private int getRandomNumberUsingInts(int min, int max) {
+        Random random = new Random();
+        return random.ints(min, max)
+                .findFirst()
+                .getAsInt();
+    }
+
+    /**
+     * Check Factor Recovery Code
+     * */
+    public ResponseEntity<Object> checkTwoFactoryRecovery(HttpServletRequest request, RecoveryCodeCheckRequest recoveryCodeCheckRequest){
+        try {
+            //Token validation
+            if(!tokenValidation.validate(request))
+                return new ResponseEntity<>(this.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+
+            //Request validation
+            if(recoveryCodeCheckRequest.getEmail()==null || recoveryCodeCheckRequest.getCode()==null)
+                return new ResponseEntity<>(this.EMPTY_DATA_ERROR, HttpStatus.BAD_REQUEST);
+
+            if(userRepository.existsByEmail(recoveryCodeCheckRequest.getEmail()))
+                return new ResponseEntity<>(this.NOT_EXIST_EMAIL, HttpStatus.NOT_FOUND);
+
+            //Check and verify code
+            User user = userRepository.getUserByEmail(recoveryCodeCheckRequest.getEmail());
+
+            if(user.getTwoFactorRecovery() != recoveryCodeCheckRequest.getCode())
+                return new ResponseEntity<>(false,HttpStatus.OK);
+
+            return new ResponseEntity<>(true,HttpStatus.OK);
+
+        }catch (Exception e){
+            return new ResponseEntity<>(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
 }
