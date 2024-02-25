@@ -11,15 +11,15 @@ public class TokenValidation {
     @Autowired
     private JwtUtil jwtUtil;
 
-    private final String AUTHORIZATION = "Authorization";
-    private final String PREFIX = "Bearer";
+    private static final String AUTHORIZATION = "Authorization";
+    private static final String PREFIX = "Bearer";
 
     public Boolean validate(HttpServletRequest request){
 
-        if(request.getHeaders(this.AUTHORIZATION).nextElement() == null || !request.getHeaders(this.AUTHORIZATION).nextElement().startsWith(this.PREFIX))
+        if(request.getHeaders(AUTHORIZATION).nextElement() == null || !request.getHeaders(AUTHORIZATION).nextElement().startsWith(PREFIX))
             return false;
 
-        return jwtUtil.validate(request.getHeaders(this.AUTHORIZATION).nextElement().split(" ")[1]);
+        return jwtUtil.validate(request.getHeaders(AUTHORIZATION).nextElement().split(" ")[1]);
 
     }
 }

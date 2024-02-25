@@ -56,10 +56,9 @@ public class AuthController {
         return authService.resetPw(request, resetPasswordRequest);
     }
 
-    //TODO: password forgot endpoint
     @ApiResponses(value = {
-            @ApiResponse(description = "Password reset successfully!",responseCode = "200",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))}),
-            @ApiResponse(description = "Bad Request during reset password.",responseCode = "400",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))}),
+            @ApiResponse(description = "Forgot password email sent successfully!",responseCode = "200",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))}),
+            @ApiResponse(description = "Bad Request during forgot password process.",responseCode = "400",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))}),
             @ApiResponse(description = "Unauthorized request.",responseCode = "401",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))}),
             @ApiResponse(description = "Email Not Found.",responseCode = "404",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))}),
             @ApiResponse(description = "Internal server error.",responseCode = "500",content = {@Content(mediaType = "text/plain",schema = @Schema(implementation = String.class))})
@@ -67,7 +66,7 @@ public class AuthController {
     )
     @GetMapping("/forgotPw")
     public  ResponseEntity<String> forgotPassword (@RequestParam("email") String email){
-        return null;
+        return authService.forgotPw(email);
     }
 
     @ApiResponses(value = {

@@ -1,32 +1,37 @@
 package hu.bb.travellingappauth.service;
 
-import dev.samstevens.totp.code.*;
+import dev.samstevens.totp.code.CodeGenerator;
+import dev.samstevens.totp.code.CodeVerifier;
+import dev.samstevens.totp.code.DefaultCodeVerifier;
+import dev.samstevens.totp.code.HashingAlgorithm;
 import dev.samstevens.totp.exceptions.QrGenerationException;
 import dev.samstevens.totp.qr.QrData;
 import dev.samstevens.totp.qr.ZxingPngQrGenerator;
 import dev.samstevens.totp.recovery.RecoveryCodeGenerator;
-import dev.samstevens.totp.secret.DefaultSecretGenerator;
 import dev.samstevens.totp.secret.SecretGenerator;
-import dev.samstevens.totp.time.SystemTimeProvider;
 import dev.samstevens.totp.time.TimeProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TwoFactorService {
 
+    @Autowired
     private SecretGenerator secretGenerator;
-    private String secret;
+
+    @Autowired
     private TimeProvider timeProvider;
+
+    @Autowired
     private CodeGenerator codeGenerator;
+
+    private String secret;
     private CodeVerifier verifier;
     private RecoveryCodeGenerator recoveryCodes;
-    private Integer RECOVERY_SIZE = 16;
+    private static final Integer RECOVERY_SIZE = 16;
 
     public void generateQrSecret(){
-        this.secretGenerator = new DefaultSecretGenerator();
         this.secret = secretGenerator.generate();
-        this.timeProvider = new SystemTimeProvider();
-        this.codeGenerator = new DefaultCodeGenerator();
         this.verifier = new DefaultCodeVerifier(codeGenerator, timeProvider);
         this.recoveryCodes = new RecoveryCodeGenerator();
     }

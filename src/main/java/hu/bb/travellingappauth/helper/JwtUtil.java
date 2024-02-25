@@ -2,7 +2,9 @@ package hu.bb.travellingappauth.helper;
 
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.KeyRequest;
+import io.jsonwebtoken.security.SecureDigestAlgorithm;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.spec.SecretKeySpec;
@@ -11,7 +13,10 @@ import java.util.Map;
 
 @Component
 public class JwtUtil {
-    private static final String SECRET = "2D4A614E645267556B58703273357638792F423F4428472B4B6250655368566D";
+
+    @Value("${jwt.secret}")
+    private String secret;
+
     private static final long EXPIRATION_TIME = 864_000_000; // 10 days
 
 
@@ -20,10 +25,10 @@ public class JwtUtil {
      * */
     public String generateToken(String username, Map<String,Object> claims) {
         return Jwts.builder()
-                .setSubject(username)
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .subject(username)
+                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(getKey())
-                .setClaims(claims)
+                .claims(claims)
                 .compact();
     }
 
@@ -45,6 +50,6 @@ public class JwtUtil {
      * Get sign key
      * */
     private SecretKeySpec getKey(){
-        return new SecretKeySpec(SECRET.getBytes(), SignatureAlgorithm.HS256.getJcaName());
+        return new SecretKeySpec(secret.getBytes(), "HmacSHA256");
     }
 }
